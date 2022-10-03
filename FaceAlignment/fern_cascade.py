@@ -85,6 +85,12 @@ class FernCascade:
         for i in range(second_level_num):
             temp = ferns[i].fit(densities, covariance, candidate_pixel_locations,
                                 nearest_landmark_index, regression_targets, fern_pixel_num)
-
+            # update regression targets
+            for j in range(len(temp)):
+                prediction[j] += temp[j]
+                regression_targets[j] -= temp[j]
+            if (i + 1) % 50 == 0:
+                print(f"Fern cascades: {curr_level_num} out of {first_level_num}")
+                print(f"Ferns: {i + 1} out of {first_level_num}")
 
 
