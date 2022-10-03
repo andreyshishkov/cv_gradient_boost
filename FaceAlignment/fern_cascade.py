@@ -1,5 +1,7 @@
 import numpy as np
-from utils import project_shape, similarity_transform
+from utils import project_shape, similarity_transform, calculate_covariance
+from bounding_box import BoundingBox
+from fern import Fern
 
 
 class FernCascade:
@@ -7,7 +9,7 @@ class FernCascade:
     def fit(self, images: list[np.ndarray],
             current_shapes: list[np.ndarray],
             ground_truth_shapes: list[np.ndarray],
-            bounding_box,
+            bounding_box: list[BoundingBox],
             mean_shape: np.ndarray,
             second_level_num: int,
             candidate_pixel_num: int,
@@ -58,4 +60,31 @@ class FernCascade:
 
                 project_y = rotation[1, 0] * candidate_pixel_locations[j, 0] + \
                             rotation[1, 1] * candidate_pixel_locations[j, 1]
+
+                project_x *= scale * bounding_box[i].width / 2.0
+                project_y *= scale * bounding_box[i].height / 2.0
+
+                index = nearest_landmark_index[j]
+                real_x = project_x + current_shapes[i][index, 0]
+                real_y = project_y + current_shapes[i][index, 1]
+                densities[j].append(int(images[i][real_y, real_x]))
+
+        # calculate the covariance between densities at each candidate pixels
+        covariance = np.zeros((candidate_pixel_num, candidate_pixel_num))
+        for i in range(candidate_pixel_num):
+            for j in range(candidate_pixel_num):
+                correlation_result = calculate_covariance(densities[i], densities[j])
+                covariance[i, j] = correlation_result
+                covariance[j, i] = correlation_result
+
+        # train ferns
+        prediction = [np.zeros((mean_shape.shape[0], 2))
+                      for _ in range(len(regression_targets))
+                      ]
+        ferns = [Fern() for _ in range(second_level_num)]
+        for i in range(second_level_num):
+            temp = ferns[i].fit(densities, covariance, candidate_pixel_locations,
+                                nearest_landmark_index, regression_targets, fern_pixel_num)
+
+
 

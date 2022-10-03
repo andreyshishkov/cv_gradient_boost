@@ -2,9 +2,9 @@ import cv2
 import numpy as np
 
 
-def calculate_covariance(v1: np.ndarray,
-                         v2: np.ndarray):
-    covariance = np.cov(v1, v2)[0][1]
+def calculate_covariance(v1: list[float],
+                         v2: list[float]):
+    covariance = np.cov(np.array(v1), np.array(v2))[0][1]
     return covariance
 
 

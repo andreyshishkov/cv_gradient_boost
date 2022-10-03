@@ -1,13 +1,11 @@
-import cv2
 import numpy as np
-from typing import List
 from utils import calculate_covariance
 
 
 class Fern:
 
-    def __init__(self, fern_pixel_num_: int,
-                 landmark_num_: int,
+    def __init__(self,
+                 landmark_num_: int = None,
                  selected_nearest_landmark_index_: np.ndarray = None,
                  threshold_: np.ndarray = None,
                  selected_pixel_index_: np.ndarray = None,
@@ -22,15 +20,15 @@ class Fern:
         self.__bin_output_ = bin_output_
         self.fern_pixel_num = 0
 
-    def fit(self, candidate_pixel_intensity: np.ndarray,
+    def fit(self, candidate_pixel_intensity: list[list[float]],
             covariance: np.ndarray,
             candidate_pixel_locations: np.ndarray,
-            nearest_landmark_index: List[int],
-            regression_targets: np.ndarray,
+            nearest_landmark_index: np.ndarray,
+            regression_targets: list[np.ndarray],
             fern_pixel_num: int
             ):
         self.fern_pixel_num = fern_pixel_num
-        landmark_num_ = regression_targets[0].shape[0]
+        self.__landmark_num_ = regression_targets[0].shape[0]
         self.__selected_pixel_index_ = np.zeros((fern_pixel_num, 2))
         self.__selected_pixel_locations_ = np.zeros((fern_pixel_num, 4))
         self.__selected_nearest_landmark_index_ = np.zeros((fern_pixel_num, 2))
@@ -39,16 +37,16 @@ class Fern:
         self.__threshold_ = np.zeros((fern_pixel_num, 1))
 
         for i in range(fern_pixel_num):
-            random_direction = np.random.rand((landmark_num_, 2))
+            random_direction = np.random.rand((self.__landmark_num_, 2))
 
-            projection_result = np.zeros(regression_targets.shape[0])
+            projection_result = np.zeros(len(regression_targets))
             for j, sample in enumerate(regression_targets):
                 projection_result[j] = np.sum(sample.dot(random_direction))
 
             covariance_projection_density = np.zeros((candidate_pixel_num, 1))
             for j in range(candidate_pixel_num):
                 covariance_projection_density[j][0] = \
-                    calculate_covariance(projection_result, candidate_pixel_intensity[j])
+                    calculate_covariance(list(projection_result), candidate_pixel_intensity[j])
 
             # find max correlations
             max_correlation = -1
@@ -102,8 +100,8 @@ class Fern:
         for i in range(len(regression_targets)):
             index = 0
             for j in range(fern_pixel_num):
-                density_1 = candidate_pixel_intensity[self.__selected_pixel_index_[j, 0], i]
-                density_2 = candidate_pixel_intensity[self.__selected_pixel_index_[j, 1], i]
+                density_1 = candidate_pixel_intensity[self.__selected_pixel_index_[j, 0]][i]
+                density_2 = candidate_pixel_intensity[self.__selected_pixel_index_[j, 1]][i]
                 if density_1 - density_2 >= self.__threshold_[j]:
                     index = index + 2 ** j
 
@@ -113,7 +111,7 @@ class Fern:
         self.__bin_output_ = [[] for _ in range(bin_num)]
         prediction = [[] for _ in range(len(regression_targets))]
         for i in range(bin_num):
-            temp = np.zeros((landmark_num_, 2))
+            temp = np.zeros((self.__landmark_num_, 2))
             bin_size = len(shape_in_bin[i])
             for j in range(bin_size):
                 index = shape_in_bin[i][j]
